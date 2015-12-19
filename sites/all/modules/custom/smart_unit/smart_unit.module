@@ -1,0 +1,40 @@
+<?php
+
+function smart_unit_load($nid) {
+    if ($nid) {
+        $node = node_load($nid);
+        $smart_unit_wrapper = entity_metadata_wrapper('node', $node);
+
+        return $smart_unit_wrapper;
+    }
+}
+
+function smart_unit_get_nid_by_auth($key, $secret) {
+    if (isset($key) && isset($secret)) {
+        $query = new EntityFieldQuery();
+
+        $query->entityCondition('entity_type', 'node')
+                ->entityCondition('bundle', 'smart_house_system')
+                ->fieldCondition('field_auth_secret', 'value', $secret, '=')
+                ->fieldCondition('field_auth_key', 'value', $key, '=');
+
+        $result = $query->execute();
+
+        if (isset($result['node'])) {
+            return current(array_keys($result['node']));
+        }
+    }
+}
+
+function smart_unit_hardware_load_all($smart_unit_wrapper) {
+    $entities = array();
+
+    foreach ($smart_unit_wrapper->field_connected_hardware->getIterator() as $delta => $entity_wrapper) {
+        // $term_wrapper may now be accessed as a taxonomy term wrapper.
+        array_push($entities, $entity_wrapper);
+        $entity_wrapper->title->value();
+        echo "Adding hardware to list: " . $entity_wrapper->title->value() . " </br>";
+    }
+    
+    return $entities;
+}

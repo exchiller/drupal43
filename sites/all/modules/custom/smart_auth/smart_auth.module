@@ -1,55 +1,46 @@
 <?php
 
 function smart_auth_user() {
-	$username = '';
-	$password = '';
-	
-	list($username, $password) = explode(':', base64_decode(substr($_SERVER['HTTP_AUTHORIZATION'], 6)), 2);
-	
-	//$username = "admin";
-	//$password = "admin";
-	
-	if ($uid = user_authenticate($username, $password)) {
-		global $user;
-		$user = user_load($uid);
+    if ($_SERVER['HTTP_AUTHORIZATION']) {
+        list($username, $password) = explode(':', base64_decode(substr($_SERVER['HTTP_AUTHORIZATION'], 6)), 2);
+        $username = 'denncath';
+        $password = 'denncath';
 
-		$login_array = array ('name' => $username);
-		user_login_finalize($login_array);
-	}
+        if ($username) {
+            if ($uid = user_authenticate($username, $password)) {
+                global $user;
+                $user = user_load($uid);
 
-	if(user_is_logged_in()){
-		echo "USER IS AUTH";
-		return true;
-	}
-	
-	header('HTTP/1.0 403 Forbidden');
- }
- 
- function smart_auth_unit() {
-	list($key, $secret) = explode(':', base64_decode($_POST['unit']), 2);
-	
-	//$key = "1324";
-	//$secret = "abcd";
+                $login_array = array('name' => $username);
+                user_login_finalize($login_array);
+            }
+        }
+    }
 
-	echo "Searching key:" . $key . " - " . $secret;	
-	$query = new EntityFieldQuery();
-	
-	$query->entityCondition('entity_type', 'node')
-	  ->entityCondition('bundle', 'smart_house_system')
-	  ->fieldCondition('field_auth_secret', 'value', $secret, '=')
-	  ->fieldCondition('field_auth_key', 'value', $key, '=');
+    if (user_is_logged_in()) {
+        return true;
+    }
 
-	$result = $query->execute();
+    header('HTTP/1.0 403 Forbidden');
+}
 
-	if (isset($result['node'])) {
-	
-		echo "FOUND";
-		$hardware_unit_nids = array_keys($result['node']);
-		$hardware_units = entity_load('node', $hardware_unit_nids);
-		
-		return $hardware_units;
-	} 
-	echo "LOL";
-	header('HTTP/1.0 403 Forbidden');
- }
- 
+function smart_auth_get_unit() {
+    global $user;
+    
+    if (isset($_POST['unit'])) {
+        list($key, $secret) = explode(':', base64_decode($_POST['unit']), 2);
+    }
+    $key = "abcd1234";
+    $secret = "abcd";
+    
+    echo "Identifying unit as: " . $user->name . "<br/>";
+    echo "Searching key:" . $key . " - " . $secret . "<br/>";
+
+    $nid = smart_unit_get_nid_by_auth($key, $secret);
+
+    if ($nid) {
+        return $nid;
+    }
+    
+    header('HTTP/1.0 403 Forbidden');
+}

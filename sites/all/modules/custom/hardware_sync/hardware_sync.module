@@ -1,30 +1,42 @@
 <?php
 
 function hardware_sync_menu() {  
-	$items = array();  
-	$items['api/v2/test_auth/retrieve'] = array(    
-		'page callback' => 'hardware_sync_start',    
-		'access arguments' => array('access content'),    
-		'type' => MENU_CALLBACK,  
-	);  
-	
-	return $items; 
+    $items = array();  
+    $items['api/v2/test_auth/retrieve'] = array(    
+        'page callback' => 'hardware_sync_start',    
+        'access arguments' => array('access content'),    
+        'type' => MENU_CALLBACK,  
+    );  
+
+    return $items; 
 }
 
-function hardware_sync_start() {
-	if (smart_auth_user()) {
-		if (smart_auth_unit()) {
-			hardware_sync_states(smart_auth_unit());
-		}
-	}
+function hardware_sync_start() {   
+    if (smart_auth_user()) {
+        $smart_unit_nid = smart_auth_get_unit();
+        
+        if ($smart_unit_nid) {
+            //$input_json = json_decode($_POST['HARDWARE_JSON']);
+            $input_json = '';
+            hardware_sync_states($smart_unit_nid, $input_json);
+        }
+    }
 }
 
-function hardware_sync_states($hardware_node) {
-	//$hardware_states = json_decode($_POST['HARDWARE_JSON']);
-	echo "Auth OK";
-	hardware_sync_get_hardware_nodes($hardware_node, $hardware_states);
+function hardware_sync_states($smart_unit_nid, $input_json) {
+    //$hardware_states = json_decode($_POST['HARDWARE_JSON']);
+    echo "Loading smart unit nid: $smart_unit_nid <br/>";
+
+    $smart_unit_wrapper = smart_unit_load($smart_unit_nid);
+    //$node = node_load($nid);
+    //$smart_unit_wrapper = entity_metadata_wrapper('node', $smart_unit_nid);
+    smart_unit_hardware_load_all($smart_unit_wrapper);
+    //echo $smart_unit_wrapper->title->value();
+    //echo $smart_unit_wrapper->field_connected_hardware->value();
+    
 }
 
-function hardware_sync_get_hardware_nodes($hardware_node, $hardware_states) {
-	print_r ($hardware_node['field_connected_hardware']);
+function hardware_sync_get_hardware_nodes($smart_unit_node, $hardware_states) {
+    print_r ($smart_unit_node);
+    echo "Done";
 }

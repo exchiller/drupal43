@@ -1,0 +1,5 @@
+name = Smart Unit (Operations)
+description = "Processes operations with smart unit content"
+package = Smart Home
+core = 7.x
+
