@@ -1,0 +1,30 @@
+<?php
+
+function hardware_sync_menu() {  
+	$items = array();  
+	$items['api/v2/test_auth/retrieve'] = array(    
+		'page callback' => 'hardware_sync_start',    
+		'access arguments' => array('access content'),    
+		'type' => MENU_CALLBACK,  
+	);  
+	
+	return $items; 
+}
+
+function hardware_sync_start() {
+	if (smart_auth_user()) {
+		if (smart_auth_unit()) {
+			hardware_sync_states(smart_auth_unit());
+		}
+	}
+}
+
+function hardware_sync_states($hardware_node) {
+	//$hardware_states = json_decode($_POST['HARDWARE_JSON']);
+	echo "Auth OK";
+	hardware_sync_get_hardware_nodes($hardware_node, $hardware_states);
+}
+
+function hardware_sync_get_hardware_nodes($hardware_node, $hardware_states) {
+	print_r ($hardware_node['field_connected_hardware']);
+}

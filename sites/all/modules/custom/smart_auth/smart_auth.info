@@ -1,0 +1,5 @@
+name = Smart Sync
+description = "Provides authentication for users/smart systems"
+package = Smart Home
+core = 7.x
+

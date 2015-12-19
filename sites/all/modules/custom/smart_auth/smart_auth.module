@@ -1,0 +1,55 @@
+<?php
+
+function smart_auth_user() {
+	$username = '';
+	$password = '';
+	
+	list($username, $password) = explode(':', base64_decode(substr($_SERVER['HTTP_AUTHORIZATION'], 6)), 2);
+	
+	//$username = "admin";
+	//$password = "admin";
+	
+	if ($uid = user_authenticate($username, $password)) {
+		global $user;
+		$user = user_load($uid);
+
+		$login_array = array ('name' => $username);
+		user_login_finalize($login_array);
+	}
+
+	if(user_is_logged_in()){
+		echo "USER IS AUTH";
+		return true;
+	}
+	
+	header('HTTP/1.0 403 Forbidden');
+ }
+ 
+ function smart_auth_unit() {
+	list($key, $secret) = explode(':', base64_decode($_POST['unit']), 2);
+	
+	//$key = "1324";
+	//$secret = "abcd";
+
+	echo "Searching key:" . $key . " - " . $secret;	
+	$query = new EntityFieldQuery();
+	
+	$query->entityCondition('entity_type', 'node')
+	  ->entityCondition('bundle', 'smart_house_system')
+	  ->fieldCondition('field_auth_secret', 'value', $secret, '=')
+	  ->fieldCondition('field_auth_key', 'value', $key, '=');
+
+	$result = $query->execute();
+
+	if (isset($result['node'])) {
+	
+		echo "FOUND";
+		$hardware_unit_nids = array_keys($result['node']);
+		$hardware_units = entity_load('node', $hardware_unit_nids);
+		
+		return $hardware_units;
+	} 
+	echo "LOL";
+	header('HTTP/1.0 403 Forbidden');
+ }
+ 
