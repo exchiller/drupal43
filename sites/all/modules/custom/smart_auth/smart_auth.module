@@ -3,9 +3,9 @@
 function smart_auth_user() {
     if ($_SERVER['HTTP_AUTHORIZATION']) {
         list($username, $password) = explode(':', base64_decode(substr($_SERVER['HTTP_AUTHORIZATION'], 6)), 2);
-        $username = 'denncath';
-        $password = 'denncath';
-
+        //$username = 'denncath';
+        //$password = 'denncath';
+                
         if ($username) {
             if ($uid = user_authenticate($username, $password)) {
                 global $user;
@@ -27,14 +27,14 @@ function smart_auth_user() {
 function smart_auth_get_unit() {
     global $user;
     
-    if (isset($_POST['unit'])) {
-        list($key, $secret) = explode(':', base64_decode($_POST['unit']), 2);
+    if (isset($_POST[variable_get('inc_json_UNIT')])) {
+        list($key, $secret) = explode(':', base64_decode($_POST[variable_get('inc_json_UNIT')]), 2);
     }
     $key = "abcd1234";
     $secret = "abcd";
     
-    echo "Identifying unit as: " . $user->name . "<br/>";
-    echo "Searching key:" . $key . " - " . $secret . "<br/>";
+    dbg("Identifying unit as: " . $user->name, "" );
+    dbg("Searching key:" . $key . " - " . $secret, "" );
 
     $nid = smart_unit_get_nid_by_auth($key, $secret);
 

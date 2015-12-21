@@ -1,42 +1,139 @@
 <?php
 
-function hardware_sync_menu() {  
-    $items = array();  
-    $items['api/v2/test_auth/retrieve'] = array(    
-        'page callback' => 'hardware_sync_start',    
-        'access arguments' => array('access content'),    
-        'type' => MENU_CALLBACK,  
-    );  
+function hardware_sync_menu() {
+    $items = array();
+    $items['api/v1/unit/sync'] = array(
+        'page callback' => 'hardware_sync_start',
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
 
-    return $items; 
+    $items['admin/config/smart_home'] = array(
+        'title' => 'Smart Home',
+        'description' => 'Configure Smart Home functionality',
+        'position' => 'left',
+        'weight' => -100,
+        'page callback' => 'system_admin_menu_block_page',
+        'page callback' => 'system_admin_menu_block_page',
+        'access arguments' => array('administer site configuration'),
+        'file' => 'system.admin.inc',
+        'file path' => drupal_get_path('module', 'system'),
+    );
+
+    $items['admin/config/smart_home/hardware_sync'] = array(
+        'title' => 'Hardware Sync',
+        'description' => 'Configure hardware sync variables',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('hardware_sync_admin_form'),
+        'access arguments' => array('administer site configuration'),
+        'file' => 'hardware_sync.admin.inc',
+        'file path' => drupal_get_path('module', 'hardware_sync'),
+        'weight' => -10,
+    );
+
+    return $items;
 }
 
-function hardware_sync_start() {   
+function hardware_sync_start() {
     if (smart_auth_user()) {
         $smart_unit_nid = smart_auth_get_unit();
-        
+        echo $smart_unit_nid;
         if ($smart_unit_nid) {
-            //$input_json = json_decode($_POST['HARDWARE_JSON']);
-            $input_json = '';
-            hardware_sync_states($smart_unit_nid, $input_json);
+//            $input_json = $_POST['HARDWARE_JSON'];
+            
+            $input_json = '[{"DB_ID":"1","HARDWARE_LAST_SYNC":"2012-01-29_09-38-49","HARDWARE_ID":"main_lighting_relay","HARDWARE_AUTO":"0","HARDWARE_BELONGS_TO":"","HARDWARE_STATE":"true","HARDWARE_TYPE":"relay","HARDWARE_NAME":"Pagrindinis apšvietimas (relė)"},{"DB_ID":"2","HARDWARE_LAST_SYNC":"2012-02-11_05-25-51","HARDWARE_ID":"main_lighting_pwm","HARDWARE_AUTO":"0","HARDWARE_BELONGS_TO":"","HARDWARE_STATE":"201","HARDWARE_TYPE":"pwm","HARDWARE_NAME":"Pagrindinis apšvietimas (pwm)"}]';
+            if (!empty($input_json)){
+                hardware_sync_states($smart_unit_nid, $input_json);
+            }
         }
     }
 }
 
 function hardware_sync_states($smart_unit_nid, $input_json) {
-    //$hardware_states = json_decode($_POST['HARDWARE_JSON']);
-    echo "Loading smart unit nid: $smart_unit_nid <br/>";
+    dbg("Smart Unit", $smart_unit_nid);
 
     $smart_unit_wrapper = smart_unit_load($smart_unit_nid);
-    //$node = node_load($nid);
-    //$smart_unit_wrapper = entity_metadata_wrapper('node', $smart_unit_nid);
-    smart_unit_hardware_load_all($smart_unit_wrapper);
-    //echo $smart_unit_wrapper->title->value();
-    //echo $smart_unit_wrapper->field_connected_hardware->value();
+    $hardware_arr = smart_unit_hardware_load_all($smart_unit_wrapper);
+    $remote_new_states = $remote_states = json_decode($input_json, true);
+
+    dbg("Remote json states", $remote_states);
+    /*
+      [{"DB_ID":"1",
+      "HARDWARE_LAST_SYNC":"2012-01-29_09-38-49",
+      "HARDWARE_ID":"main_lighting_relay",
+      "HARDWARE_AUTO":"0",
+      "HARDWARE_BELONGS_TO":"",
+      "HARDWARE_STATE":"true",
+      "HARDWARE_TYPE":"relay",
+      "HARDWARE_NAME":"Pagrindinis apšvietimas (relė)"
+      }]
+     */
+
+
+    foreach ($hardware_arr as $h_wrapper) {
+        dbg("Iterating through SmartSystem connected hardware", $h_wrapper->field_id->value());
+
+        if (!empty($remote_new_states)) {
+            $remote_new_states = hardware_sync_distinguish_by_col(
+                    $remote_new_states, variable_get('inc_json_HARDWARE_ID'), $h_wrapper->field_id->value()
+            );
+        }
     
+        $updated_state = hardware_sync_filter_hardware_json(
+                $remote_states, variable_get('inc_json_HARDWARE_ID'), $h_wrapper->field_id->value()
+        );
+
+        hardware_update_timestamp_wrapper(
+                $h_wrapper, $updated_state
+        );
+
+        hardware_state_update_nid(
+                $h_wrapper->field_hardware_state->getIdentifier(), $updated_state
+        );
+    }
+
+    if (!empty($remote_new_states)) {
+        dbg ("There are some new states", $remote_new_states);
+        
+        foreach ($remote_new_states as $state) {
+            dbg("Creating new Hardware node from state", $state);
+            $hardware_state_nid = hardware_state_create_node_from_json(
+                    $state, $smart_unit_wrapper
+            );
+            $hardware_nid = hardware_create_node_from_json(
+                    $state, $smart_unit_wrapper, $hardware_state_nid
+            );
+            $smart_unit_wrapper->field_connected_hardware[] = $hardware_nid;
+        }
+
+        $smart_unit_wrapper->save();
+    } else {
+        dbg ("No newly attached hardware detected", "");
+    }
 }
 
-function hardware_sync_get_hardware_nodes($smart_unit_node, $hardware_states) {
-    print_r ($smart_unit_node);
-    echo "Done";
+function hardware_sync_distinguish_by_col($array, $col_name, $col_value) {
+    foreach ($array as $k => $v) {
+        if (is_array($v)) {
+            if ($v[$col_name] == $col_value) {
+                unset ($array[$k]);
+            }
+        }
+    }
+        
+    if (isset($array)) {
+        return $array;
+    }
+}
+
+function hardware_sync_filter_hardware_json($array, $col_name, $col_value) {
+    foreach ($array as $k => $v) {
+        if (is_array($v)) {
+            if ($v[$col_name] == $col_value) {
+                return $array[$k];
+            }
+        }
+    }
+
+    return false;
 }

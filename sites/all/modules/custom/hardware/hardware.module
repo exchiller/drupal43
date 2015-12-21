@@ -1,0 +1,31 @@
+<?php
+
+function hardware_create_node_from_json($json, $smart_unit_wrapper, $hardware_state_nid) {
+    $values = array(
+        'type' => 'hardware',
+        'status' => 1,
+        'comment' => 0,
+        'promote' => 0,
+    );
+    $entity = entity_create('node', $values);
+
+    $ewrapper = entity_metadata_wrapper('node', $entity);
+    $ewrapper->field_id->set($json[variable_get('inc_json_HARDWARE_ID')]);
+    $ewrapper->title->set($json[variable_get('inc_json_HARDWARE_NAME')]);
+    $ewrapper->field_hardware_state->set($hardware_state_nid);
+    $ewrapper->field_owners->set($smart_unit_wrapper->field_owners->value());
+    $ewrapper->field_power_users->set($smart_unit_wrapper->field_power_users->value());
+    $ewrapper->field_limited_users->set($smart_unit_wrapper->field_limited_users->value());
+
+    $ewrapper->save();
+
+    return $ewrapper->getIdentifier();
+}
+
+function hardware_update_timestamp_wrapper($wrapper, $json) {
+    $date = $json[variable_get('inc_json_HARDWARE_LAST_SYNC')];
+    $timestamp = DateTime::createFromFormat('!Y-m-d_H-i-s', $date)->getTimestamp();
+    dbg("Updating hardware timestamp", $timestamp);
+    $wrapper->field_last_sync->set($timestamp);
+    $wrapper->save();
+}

@@ -1,0 +1,5 @@
+name = Hardware Global (Operations)
+description = "Provides connections between content types, sync ids, etc"
+package = Smart Home
+core = 7.x
+

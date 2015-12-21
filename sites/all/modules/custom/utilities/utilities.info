@@ -1,0 +1,5 @@
+name = Utilities
+description = "Various general functions"
+package = Smart Home
+core = 7.x
+

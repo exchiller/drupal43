@@ -30,11 +30,15 @@ function smart_unit_hardware_load_all($smart_unit_wrapper) {
     $entities = array();
 
     foreach ($smart_unit_wrapper->field_connected_hardware->getIterator() as $delta => $entity_wrapper) {
-        // $term_wrapper may now be accessed as a taxonomy term wrapper.
-        array_push($entities, $entity_wrapper);
-        $entity_wrapper->title->value();
-        echo "Adding hardware to list: " . $entity_wrapper->title->value() . " </br>";
+        try {
+            $entity_wrapper->title->value();
+            dbg("Adding hardware to list", $entity_wrapper->title->value());
+            array_push($entities, $entity_wrapper);
+        } catch (Exception $e) {
+            dbg("Defined hardware doesnt exist anymore", "");
+            
+        }
     }
-    
+
     return $entities;
 }

@@ -1,0 +1,5 @@
+name = Hardware (Operations)
+description = "Processes operations of hardware content type"
+package = Smart Home
+core = 7.x
+

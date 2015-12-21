@@ -1,0 +1,108 @@
+<?php
+
+function hardware_state_node_load($nodes, $types) {
+    $hardware_state_nodes = hardware_global_all_drupal_types();
+
+    if (!count(array_intersect($types, $hardware_state_nodes)) > 0) {
+        return;
+    }
+    foreach ($nodes as $node) {
+        if (in_array($node->type, $hardware_state_nodes)) {
+            $parent_node = hardware_state_get_parent_hardware($node);
+            if (!empty($parent_node)) {
+                hardware_state_set_permissions($node, $parent_node);
+            }
+        }
+    }
+}
+
+function hardware_state_get_parent_hardware($node) {
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'node')
+            ->entityCondition('bundle', 'hardware')
+            ->fieldCondition('field_hardware_state', 'target_id', $node->nid, '=');
+
+    $result = $query->execute();
+
+    if (isset($result['node'])) {
+        $node = node_load(current(array_keys($result['node'])));
+        return $node;
+    }
+}
+
+function hardware_state_set_permissions($state_node, $parent_node) {
+    $old_node = $state_node;
+
+    if (isset($parent_node->field_owners[LANGUAGE_NONE])) {
+        $state_node->field_owners[LANGUAGE_NONE][0]['uid'] = $parent_node->field_owners[LANGUAGE_NONE][0]['uid'];
+    }
+
+    if (isset($parent_node->field_power_users[LANGUAGE_NONE])) {
+        $state_node->field_power_users[LANGUAGE_NONE][0]['uid'] = $parent_node->field_power_users[LANGUAGE_NONE][0]['uid'];
+    }
+
+    if (isset($parent_node->field_limited_users[LANGUAGE_NONE])) {
+        $state_node->field_limited_users[LANGUAGE_NONE][0]['uid'] = $parent_node->field_limited_users[LANGUAGE_NONE][0]['uid'];
+    }
+
+    if ($old_node !== $state_node) {
+        node_save($state_node);
+        node_access_needs_rebuild(TRUE);
+        dpm("Permissions for hardware state updated");
+    }
+}
+
+function hardware_state_create_node_from_json($state_json, $smart_unit_wrapper) {
+
+    $state = hardware_state_prepare_json_values($state_json);
+
+    $values = array(
+        'type' => $state['type'],
+        'status' => 1,
+        'comment' => 0,
+        'promote' => 0,
+    );
+    $entity = entity_create('node', $values);
+
+    $ewrapper = entity_metadata_wrapper('node', $entity);
+    $ewrapper->{$state['field_name']}->set($state['state']);
+    $ewrapper->title->set($state['title']);
+
+    $ewrapper->field_owners->set($smart_unit_wrapper->field_owners->value());
+    $ewrapper->field_power_users->set($smart_unit_wrapper->field_power_users->value());
+    $ewrapper->field_limited_users->set($smart_unit_wrapper->field_limited_users->value());
+
+    $ewrapper->save();
+
+    return $ewrapper->getIdentifier();
+}
+
+function hardware_state_update_nid($nid, $state) {
+    $state = hardware_state_prepare_json_values($state);
+
+    $node = node_load($nid);
+    $ewrapper = entity_metadata_wrapper('node', $node);
+    $ewrapper->{$state['field_name']}->set($state['state']);
+    $ewrapper->save();
+}
+
+function hardware_state_prepare_json_values($state_json) {
+    $type = hardware_global_type_to_drupal(
+            $state_json[variable_get('inc_json_HARDWARE_TYPE')]
+    );
+
+    $field_name = hardware_global_get_field_name($type);
+    $state = $state_json[variable_get('inc_json_HARDWARE_STATE')];
+    if ($state === 'true') $state = true;
+    
+    $processed_values = array(
+        'title' => $state_json[variable_get('inc_json_HARDWARE_NAME')] . " State",
+        'type' => $state_json[variable_get('inc_json_HARDWARE_TYPE')],
+        'state' => $state,
+        'type' => $type,
+        'field_name' => $field_name,
+    );
+    
+    dbg("Processed values: ", $processed_values);
+    return $processed_values;
+}

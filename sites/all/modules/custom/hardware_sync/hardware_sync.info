@@ -2,4 +2,5 @@ name = Hardware Sync
 description = "Processes requests from hardware"
 package = Smart Home
 core = 7.x
+files[] = hardware_sync.admin.inc
 

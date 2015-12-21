@@ -1,0 +1,56 @@
+<?php
+
+function hardware_global_all_types() {
+    $android_types = array(
+        'relay' => array(
+            'default_image' => 'default_img.jpg',
+            'android_name' => 'relay',
+        ),
+        'pwm' => array(
+            'default_image' => 'default_img.jpg',
+            'android_name' => 'pwm',
+        ),
+    );
+
+    $types = array(
+        'hardware_state_boolean' => array(
+            'hardware_types' => array(
+                $android_types['relay']
+            ),
+            'field_name' => 'field_state_boolean',
+        ),
+        'hardware_state_integer' => array(
+            'hardware_types' => array(
+                $android_types['pwm']
+            ),
+        'field_name' => 'field_state_integer',
+        )
+    );
+
+    return $types;
+}
+
+function hardware_global_type_to_drupal($andr_type) {
+    $all_types = hardware_global_all_types();
+    $dr_type = utilities_recursive_array_search($andr_type, $all_types);
+
+    return $dr_type;
+}
+
+function hardware_global_type_to_android($dr_type) {
+    $all_types = hardware_global_all_types();
+    $andr_types = $all_types[$dr_type];
+
+    return $andr_types;
+}
+
+function hardware_global_all_drupal_types() {
+    $all_types = hardware_global_all_types();
+
+    return array_keys($all_types);
+}
+
+function hardware_global_get_field_name($dr_content_type) {
+    $all_types = hardware_global_all_types();
+    return $all_types[$dr_content_type]['field_name'];
+}
